@@ -15,6 +15,12 @@ export async function POST(req:Request){
    const cookie=`harbor_guest=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${new URL(req.url).protocol==='https:'?'; Secure':''}`;
    const name=(typeof body.name==='string'?body.name:'').replace(/[<>\x00-\x1f]/g,'').trim().slice(0,24)||'Captain';
    const id=crypto.randomUUID().replaceAll('-','').slice(0,16);
+   await env.DB.batch([
+     env.DB.prepare('CREATE TABLE IF NOT EXISTS arena (id INTEGER PRIMARY KEY NOT NULL, version INTEGER NOT NULL, data TEXT NOT NULL)'),
+     env.DB.prepare('CREATE TABLE IF NOT EXISTS results (id TEXT PRIMARY KEY NOT NULL, winner TEXT, loser TEXT, finished INTEGER NOT NULL)'),
+     env.DB.prepare('CREATE INDEX IF NOT EXISTS results_winner_idx ON results (winner)'),
+     env.DB.prepare('CREATE INDEX IF NOT EXISTS results_loser_idx ON results (loser)'),
+   ]);
    await env.DB.prepare('INSERT OR IGNORE INTO arena (id,version,data) VALUES (1,0,?)').bind('{"rooms":[]}').run();
    for(let attempt=0;attempt<10;attempt++){
      const row=await env.DB.prepare('SELECT version,data FROM arena WHERE id=1').first<{version:number;data:string}>();
